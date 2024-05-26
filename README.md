@@ -1,3 +1,5 @@
+A fun clone of beautiful-dnd using ReactJS. Not so feature rich as of now. Will be adding more features soon. You can find a working demo here: [link](https://not-so-beatutiful-dnd.vercel.app/)
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

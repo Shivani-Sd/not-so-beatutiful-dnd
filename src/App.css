@@ -1,0 +1,24 @@
+body {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #ece3ff;
+}
+
+#App {
+  width: 1000px;
+  height: 1000px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#containers {
+  width: 80vw;
+  height: inherit;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}

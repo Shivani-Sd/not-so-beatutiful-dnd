@@ -1,14 +1,21 @@
 .container {
   width: 300px;
   height: 65%;
+  min-width: 300px;
   display: flex;
   flex-direction: column;
   align-items: center;
   overflow-y: auto;
   position: relative;
   box-sizing: border-box;
-  padding: 20px 0 0 0;
+  margin-left: 20px;
   background-color: #ebebebc7;
   box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
   border-radius: 5px;
+  transition: left 0.5s ease;
+}
+
+.container-title {
+  width: 260px;
+  padding: 20px;
 }

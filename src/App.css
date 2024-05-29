@@ -8,7 +8,7 @@ body {
 }
 
 #App {
-  width: 1000px;
+  width: 1300px;
   height: 1000px;
   display: flex;
   justify-content: center;
@@ -19,6 +19,10 @@ body {
   width: 80vw;
   height: inherit;
   display: flex;
-  justify-content: space-around;
   align-items: center;
+  overflow-x: auto;
+}
+
+.dragging {
+  opacity: 0;
 }

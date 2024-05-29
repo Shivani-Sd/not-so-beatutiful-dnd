@@ -1,58 +1,102 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useRef, useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import _ from "lodash";
 
-import { CardInterface } from "../../types";
-import { TOP_PAYLOAD } from "../../constants";
 import { RootState } from "../../store/store";
+import {
+  setContainers,
+  setDraggedContainer,
+} from "../../store/slices/appSlice";
+import { CardInterface, ContainerInterface } from "../../types";
+import { LEFT_PAYLOAD, TOP_PAYLOAD } from "../../constants";
 import Card from "../card";
 import "./styles.css";
 
 interface ContainerProps {
   index: number;
-  cards: React.MutableRefObject<CardInterface[][]>;
-  topPositions: React.MutableRefObject<number[]>;
+  container: ContainerInterface;
+  cardTopPositions: React.MutableRefObject<number[]>;
+  orderedCards: React.MutableRefObject<CardInterface[][]>;
+  orderedContainers: React.MutableRefObject<ContainerInterface[]>;
 }
 
 const Container: React.FC<ContainerProps> = ({
   index,
-  cards,
-  topPositions,
+  container,
+  cardTopPositions,
+  orderedCards,
+  orderedContainers,
 }) => {
+  const { id } = container;
+
+  const dispatch = useDispatch();
+
+  const containers = useSelector((root: RootState) => root.appSlice.containers);
   const draggedCard = useSelector(
     (root: RootState) => root.appSlice.draggedCard
   );
+  const draggedContainer = useSelector(
+    (root: RootState) => root.appSlice.draggedContainer
+  );
+
+  const reordered = useRef<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  const [cardsToRender, setCardsToRender] = useState<CardInterface[]>(
-    cards.current[index]
+  const [cards, setCards] = useState<CardInterface[]>(
+    orderedCards.current[index] ?? []
   );
+  const [dragging, setDragging] = useState<boolean>(false);
+
+  const removeCardFromSourceContainer = () => {
+    const cardsToRenderCopy = _.cloneDeep(cards);
+
+    const newIds = new Set(orderedCards.current[index].map((item) => item.id));
+
+    const missingCard = cards.find((item) => !newIds.has(item.id));
+
+    cardsToRenderCopy.splice(
+      cardsToRenderCopy.findIndex((card) => card.id === missingCard?.id),
+      1
+    );
+
+    cardsToRenderCopy.forEach((cardToRender) => {
+      const indexToReplace = orderedCards.current[index].findIndex(
+        (card) => card.id === cardToRender.id
+      );
+
+      if (indexToReplace !== -1) {
+        cardToRender.top = orderedCards.current[index][indexToReplace].top;
+      }
+    });
+
+    setCards(cardsToRenderCopy);
+  };
 
   const handleDrop = () => {
     if (draggedCard && index !== draggedCard.containerIndex) {
-      const rearrangedCards = _.cloneDeep(cards.current);
+      const reorderedCards = _.cloneDeep(orderedCards.current);
 
       // Remove dragged card from source container
-      const sourceContainer = rearrangedCards[draggedCard.containerIndex];
+      const sourceContainer = reorderedCards[draggedCard.containerIndex];
 
       const indexToRemove = sourceContainer.findIndex(
         (card) => card.id === draggedCard.id
       );
 
       sourceContainer.splice(indexToRemove, 1);
-      
+
       sourceContainer.forEach(
-        (card, index) => (card.top = topPositions.current[index])
+        (card, index) => (card.top = cardTopPositions.current[index])
       );
 
-      cards.current[draggedCard.containerIndex] = sourceContainer;
+      orderedCards.current[draggedCard.containerIndex] = sourceContainer;
 
       // Add dragged card to new container
-      const cardsToRenderCopy = _.cloneDeep(cardsToRender);
+      const cardsToRenderCopy = _.cloneDeep(cards);
 
-      let top = topPositions.current[0];
+      let top = cardTopPositions.current[0];
 
       const indexToAdd = cardsToRenderCopy.findIndex((card) => {
         const result = top !== card.top;
@@ -71,18 +115,17 @@ const Container: React.FC<ContainerProps> = ({
         }
       );
 
-      cards.current[index] = cardsToRenderCopy;
-
-      setCardsToRender(cardsToRenderCopy);
+      orderedCards.current[index] = cardsToRenderCopy;
+      setCards(cardsToRenderCopy);
     }
   };
 
   const handleDropCancel = () => {
-    const cardsToRenderCopy = _.cloneDeep(cardsToRender);
+    const cardsToRenderCopy = _.cloneDeep(cards);
 
     let indexToAdd = -1;
 
-    let top = topPositions.current[0];
+    let top = cardTopPositions.current[0];
 
     const tops = cardsToRenderCopy
       .map((card) => card.top)
@@ -98,66 +141,134 @@ const Container: React.FC<ContainerProps> = ({
 
     if (indexToAdd !== -1) {
       cardsToRenderCopy.forEach((cardToRender) => {
-        const indexToReplace = cards.current[index].findIndex(
+        const indexToReplace = orderedCards.current[index].findIndex(
           (card) => card.id === cardToRender.id
         );
 
         if (indexToReplace !== -1) {
-          cardToRender.top = cards.current[index][indexToReplace].top;
+          cardToRender.top = orderedCards.current[index][indexToReplace].top;
         }
       });
 
-      setCardsToRender(cardsToRenderCopy);
+      setCards(cardsToRenderCopy);
     }
   };
 
-  const removeCardFromSourceContainer = () => {
-    const cardsToRenderCopy = _.cloneDeep(cardsToRender);
+  const handleDragStart = () => {
+    setTimeout(() => {
+      setDragging(true);
+    }, 10);
 
-    const newIds = new Set(cards.current[index].map((item) => item.id));
+    dispatch(setDraggedContainer({ ...container, containerIndex: index }));
+  };
 
-    const missingCard = cardsToRender.find((item) => !newIds.has(item.id));
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
 
-    cardsToRenderCopy.splice(
-      cardsToRenderCopy.findIndex((card) => card.id === missingCard?.id),
-      1
-    );
+    // Check if the target container is not the same as the source
+    if (draggedContainer && id !== draggedContainer.id) {
+      // Reorder containers
+      const orderedContainersCopy = _.cloneDeep(orderedContainers.current);
 
-    cardsToRenderCopy.forEach((cardToRender) => {
-      const indexToReplace = cards.current[index].findIndex(
-        (card) => card.id === cardToRender.id
+      const indexToRemove = orderedContainersCopy.findIndex(
+        (container) => container.id === draggedContainer.id
       );
 
-      if (indexToReplace !== -1) {
-        cardToRender.top = cards.current[index][indexToReplace].top;
-      }
-    });
+      const indexToAdd = orderedContainersCopy.findIndex(
+        (container) => container.id === id
+      );
 
-    setCardsToRender(cardsToRenderCopy);
+      orderedContainersCopy.splice(indexToRemove, 1);
+
+      const { containerIndex, ...rest } = draggedContainer;
+
+      orderedContainersCopy.splice(indexToAdd, 0, { ...rest });
+
+      // Assign new left values to reordered containers
+      orderedContainersCopy.forEach((container, index) => {
+        container.left =
+          (index -
+            containers.findIndex((element) => element.id === container.id)) *
+          LEFT_PAYLOAD;
+      });
+
+      // Copy new left values to state
+      const containersCopy = _.cloneDeep(containers);
+
+      containersCopy.forEach((container) => {
+        container.left =
+          orderedContainersCopy.find(
+            (containerRef) => containerRef.id === container.id
+          )?.left ?? 0;
+      });
+
+      orderedContainers.current = orderedContainersCopy;
+      dispatch(setContainers(containersCopy));
+      reordered.current = true;
+    }
+  };
+
+  const handleDragEnter = (e: DragEvent) => {
+    e.preventDefault();
+    handleDragOver(e);
+  };
+
+  const handleDragLeave = (e: DragEvent) => {
+    e.stopPropagation();
+    reordered.current = false;
+  };
+
+  const handleDragEnd = () => {
+    setDragging(false);
+    reordered.current = false;
+
+    dispatch(setDraggedContainer(null));
+  };
+
+  const clearEvents = () => {
+    const container = containerRef.current;
+
+    if (container) {
+      container.removeEventListener("dragenter", handleDragEnter);
+      container.removeEventListener("dragleave", handleDragLeave);
+      container.removeEventListener("dragover", handleDragOver);
+    }
   };
 
   useEffect(() => {
     const container = containerRef.current;
 
     if (container) {
-      const handleDragOver = (e: DragEvent) => {
-        e.preventDefault();
-      };
-
-      container.addEventListener("dragover", handleDragOver);
       container.addEventListener("drop", handleDrop);
 
       return () => {
-        container.removeEventListener("dragover", handleDragOver);
         container.removeEventListener("drop", handleDrop);
       };
     }
-  }, [draggedCard, cardsToRender]);
+  }, [draggedCard, cards]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (container) {
+      clearEvents();
+
+      container.addEventListener("dragenter", handleDragEnter);
+      container.addEventListener("dragleave", handleDragLeave);
+
+      if (!reordered.current)
+        container.addEventListener("dragover", handleDragOver);
+
+      return () => {
+        clearEvents();
+      };
+    }
+  }, [draggedContainer, containers]);
 
   useEffect(() => {
     // Remove dragged card from source container
     if (!draggedCard) {
-      if (cardsToRender.length > cards.current[index].length)
+      if (cards.length > orderedCards.current[index].length)
         removeCardFromSourceContainer();
 
       handleDropCancel();
@@ -165,18 +276,28 @@ const Container: React.FC<ContainerProps> = ({
   }, [draggedCard]);
 
   return (
-    <div className="container" ref={containerRef}>
-      {cardsToRender.map((card) => (
+    <div
+      className={`container${dragging ? " dragging" : ""}`}
+      ref={containerRef}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      style={{
+        left: `${container.left}px`,
+      }}
+    >
+      <div className="container-title">{container.name}</div>
+      {cards.map((card) => (
         <Card
           key={card.id}
           card={card}
-          cards={cards}
+          orderedCards={orderedCards}
           containerIndex={index}
-          cardsToRender={cardsToRender}
+          cards={cards}
           containerRef={containerRef}
           draggedCard={draggedCard}
-          topPositions={topPositions}
-          setCardsToRender={setCardsToRender}
+          topPositions={cardTopPositions}
+          setCards={setCards}
         />
       ))}
     </div>

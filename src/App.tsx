@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "./store/store";
 
-import { CardInterface } from "./types";
+import { CardInterface, ContainerInterface } from "./types";
 import { INITIAL_CARDS } from "./constants";
 import Container from "./components/container";
 import "./App.css";
@@ -10,9 +10,11 @@ import "./App.css";
 function App() {
   const containers = useSelector((root: RootState) => root.appSlice.containers);
 
-  const cards = useRef<CardInterface[][]>(INITIAL_CARDS);
+  const orderedContainers = useRef<ContainerInterface[]>(containers);
 
-  const topPositions = useRef<number[]>([]);
+  const orderedCards = useRef<CardInterface[][]>(INITIAL_CARDS);
+
+  const cardTopPositions = useRef<number[]>([]);
 
   return (
     <div id="App">
@@ -21,8 +23,10 @@ function App() {
           <Container
             key={container.id}
             index={index}
-            cards={cards}
-            topPositions={topPositions}
+            orderedCards={orderedCards}
+            container={container}
+            cardTopPositions={cardTopPositions}
+            orderedContainers={orderedContainers}
           />
         ))}
       </div>

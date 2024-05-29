@@ -1,6 +1,7 @@
 export interface ContainerInterface {
   id: number;
   name: string;
+  left: number;
 }
 
 export interface CardInterface {
@@ -10,5 +11,9 @@ export interface CardInterface {
 }
 
 export interface DraggedCardInterface extends CardInterface {
+  containerIndex: number;
+}
+
+export interface DraggedContainerInterface extends ContainerInterface {
   containerIndex: number;
 }

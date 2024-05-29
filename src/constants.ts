@@ -28,6 +28,42 @@ export const INITIAL_CARDS = [
       top: null,
     },
   ],
+  [
+    {
+      id: 21,
+      name: "card21",
+      top: null,
+    },
+    {
+      id: 22,
+      name: "card22",
+      top: null,
+    },
+  ],
+  [
+    {
+      id: 31,
+      name: "card31",
+      top: null,
+    },
+    {
+      id: 32,
+      name: "card32",
+      top: null,
+    },
+    {
+      id: 33,
+      name: "card33",
+      top: null,
+    },
+    {
+      id: 34,
+      name: "card34",
+      top: null,
+    },
+  ]
 ];
 
 export const TOP_PAYLOAD = 120;
+
+export const LEFT_PAYLOAD = 320;

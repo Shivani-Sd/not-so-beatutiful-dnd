@@ -10,24 +10,24 @@ import "./styles.css";
 
 interface CardProps {
   card: CardInterface;
-  cards: React.MutableRefObject<CardInterface[][]>;
-  cardsToRender: CardInterface[];
+  orderedCards: React.MutableRefObject<CardInterface[][]>;
+  cards: CardInterface[];
   containerIndex: number;
   containerRef: React.MutableRefObject<HTMLDivElement | null>;
   draggedCard: DraggedCardInterface | null;
   topPositions: React.MutableRefObject<number[]>;
-  setCardsToRender: React.Dispatch<React.SetStateAction<CardInterface[]>>;
+  setCards: React.Dispatch<React.SetStateAction<CardInterface[]>>;
 }
 
 const Card: React.FC<CardProps> = ({
   card,
+  orderedCards,
   cards,
-  cardsToRender,
   containerIndex,
   containerRef,
   draggedCard,
   topPositions,
-  setCardsToRender,
+  setCards,
 }) => {
   const { id, name } = card;
 
@@ -35,15 +35,17 @@ const Card: React.FC<CardProps> = ({
 
   const cardRef = useRef<HTMLDivElement>(null);
 
+  const reordered = useRef<boolean>(false);
+
   const [dragging, setDragging] = useState<boolean>(false);
 
   const initializeTopPositions = () => {
     const positions = [...topPositions.current];
 
-    const indexToAdd = cardsToRender.findIndex((card) => card.id === id);
+    const indexToAdd = cards.findIndex((card) => card.id === id);
 
     if (cardRef.current && containerRef.current) {
-      const index = cardsToRender.findIndex((card) => card.id === id);
+      const index = cards.findIndex((card) => card.id === id);
 
       const top =
         cardRef.current?.getBoundingClientRect().top -
@@ -56,95 +58,102 @@ const Card: React.FC<CardProps> = ({
           containerRef.current?.getBoundingClientRect().top
       );
 
-      topPositions.current = Array.from(new Set(positions));      
-      cards.current[containerIndex][index].top = top;
-      setCardsToRender(cards.current[containerIndex]);
+      topPositions.current = Array.from(new Set(positions));
+      orderedCards.current[containerIndex][index].top = top;
+      setCards(orderedCards.current[containerIndex]);
     }
   };
 
-  const handleDragStart = () => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     setTimeout(() => {
       setDragging(true);
     }, 10);
-    
+
     dispatch(setDraggedCard({ ...card, containerIndex: containerIndex }));
   };
 
   const handleDragOver = () => {
     if (draggedCard) {
+      // Check whether card is dragged within the container
       if (containerIndex === draggedCard.containerIndex) {
-        // Change top positions of cards when moving within the same container (without rearrangement)
-        const rearrangedCards = _.cloneDeep(cards.current);
+        // Reorder cards
+        const reorderedCards = _.cloneDeep(orderedCards.current);
 
-        const indexToRemove = rearrangedCards[containerIndex].findIndex(
+        const indexToRemove = reorderedCards[containerIndex].findIndex(
           (card) => card.id === draggedCard.id
         );
 
         if (indexToRemove !== -1) {
-          // Rearrange cards
-          const elementToRemove =
-            rearrangedCards[containerIndex][indexToRemove];
+          const elementToRemove = reorderedCards[containerIndex][indexToRemove];
 
-          const indexToAdd = rearrangedCards[containerIndex].findIndex(
+          const indexToAdd = reorderedCards[containerIndex].findIndex(
             (card) => card.id === id
           );
 
-          rearrangedCards[containerIndex].splice(indexToRemove, 1);
+          reorderedCards[containerIndex].splice(indexToRemove, 1);
 
-          rearrangedCards[containerIndex].splice(
-            indexToAdd,
-            0,
-            elementToRemove
-          );
+          reorderedCards[containerIndex].splice(indexToAdd, 0, elementToRemove);
 
-          const cardsToRenderCopy = _.cloneDeep(cardsToRender);
+          // Assign new top values to reordered cards
+          const cardsCopy = _.cloneDeep(cards);
 
-          rearrangedCards[containerIndex].forEach((card, index) => {
-            const cardToRenderIndex = cardsToRender.findIndex(
-              (cardToRender) => cardToRender.id === card.id
+          reorderedCards[containerIndex].forEach((card, index) => {
+            const cardIndex = cards.findIndex(
+              (cardCopy) => cardCopy.id === card.id
             );
 
-            if (cardToRenderIndex !== -1) {
-              cardsToRenderCopy[cardToRenderIndex].top =
-                topPositions.current[index];
+            if (cardIndex !== -1) {
+              cardsCopy[cardIndex].top = topPositions.current[index];
             }
           });
 
-          cards.current = rearrangedCards;
-          setCardsToRender(cardsToRenderCopy);
+          orderedCards.current = reorderedCards;
+          reordered.current = true;
+          setCards(cardsCopy);
         }
       } else {
-        // Change top positions of cards when moving to another container (without rearrangement)
-        const rearrangedCards = _.cloneDeep(cards.current[containerIndex]);
+        // Reorder cards
+        const reorderedCards = _.cloneDeep(
+          orderedCards.current[containerIndex]
+        );
 
-        if (rearrangedCards.length === topPositions.current.length) {
+        if (reorderedCards.length === topPositions.current.length) {
           topPositions.current.push(
             topPositions.current[topPositions.current.length - 1] + TOP_PAYLOAD
           );
         }
 
-        const startIndex = rearrangedCards.findIndex((card) => card.id === id);
+        const startIndex = reorderedCards.findIndex((card) => card.id === id);
 
-        for (let i = startIndex; i < rearrangedCards.length; i++) {
-          rearrangedCards[i].top = topPositions.current[i + 1];
+        for (let i = startIndex; i < reorderedCards.length; i++) {
+          reorderedCards[i].top = topPositions.current[i + 1];
         }
 
-        const cardsToRenderCopy = _.cloneDeep(cardsToRender);
+        // Assign new top values to reordered cards
+        const cardsToRenderCopy = _.cloneDeep(cards);
 
         cardsToRenderCopy.forEach((card) => {
-          const top = rearrangedCards?.find(
-            (rearrangedCard) => rearrangedCard.id === card.id
+          const top = reorderedCards?.find(
+            (reorderedCard) => reorderedCard.id === card.id
           )?.top;
 
           if (top) card.top = top;
         });
 
-        setCardsToRender(cardsToRenderCopy);
+        reordered.current = false;
+        setCards(cardsToRenderCopy);
       }
     }
   };
 
-  const handleDragEnd = () => {
+  const handleDragLeave = (e: DragEvent) => {
+    e.stopPropagation();
+    reordered.current = false;
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    e.stopPropagation();
     setDragging(false);
 
     setTimeout(() => {
@@ -152,17 +161,35 @@ const Card: React.FC<CardProps> = ({
     }, 50);
   };
 
+  const clearEvents = () => {
+    const card = cardRef.current;
+
+    if (card) {
+      card.removeEventListener("dragleave", handleDragOver);
+      card.removeEventListener("dragover", handleDragOver);
+    }
+  };
+
   useEffect(() => {
     initializeTopPositions();
   }, []);
 
   useEffect(() => {
-    cardRef.current?.addEventListener("dragover", handleDragOver);
+    const card = cardRef.current;
+
+    if (card) {
+      clearEvents();
+      card.addEventListener("dragleave", handleDragLeave);
+
+      if (!reordered.current) {
+        card.addEventListener("dragover", handleDragOver);
+      }
+    }
 
     return () => {
-      cardRef.current?.removeEventListener("dragover", handleDragOver);
+      clearEvents();
     };
-  }, [draggedCard]);
+  }, [draggedCard, cards]);
 
   return (
     <div
@@ -174,7 +201,6 @@ const Card: React.FC<CardProps> = ({
       style={{
         position: card.top ? "absolute" : "static",
         top: `${card.top}px`,
-        transition: "top ease 0.5s",
       }}
     >
       {name}

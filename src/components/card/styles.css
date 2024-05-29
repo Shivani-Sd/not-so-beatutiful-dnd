@@ -9,11 +9,6 @@
   background-color: white;
   box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
   border-radius: 5px;
-  font-family: "Lexend", sans-serif;
   font-optical-sizing: auto;
   transition: top 0.5s ease;
-}
-
-.dragging {
-  opacity: 0;
 }

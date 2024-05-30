@@ -5,10 +5,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  overflow-x: hidden;
   overflow-y: auto;
   position: relative;
   box-sizing: border-box;
-  margin-left: 20px;
+  margin: 0px 10px 0px 10px;
   background-color: #ebebebc7;
   box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
   border-radius: 5px;

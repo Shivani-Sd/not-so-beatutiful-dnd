@@ -40,8 +40,6 @@ const Container: React.FC<ContainerProps> = ({
     (root: RootState) => root.appSlice.draggedContainer
   );
 
-  const reordered = useRef<boolean>(false);
-
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [cards, setCards] = useState<CardInterface[]>(
@@ -49,19 +47,23 @@ const Container: React.FC<ContainerProps> = ({
   );
   const [dragging, setDragging] = useState<boolean>(false);
 
+  const initializeTopPositions = () => {
+    setCards(orderedCards.current[index]);
+  };
+
   const removeCardFromSourceContainer = () => {
-    const cardsToRenderCopy = _.cloneDeep(cards);
+    const cardsCopy = _.cloneDeep(cards);
 
     const newIds = new Set(orderedCards.current[index].map((item) => item.id));
 
     const missingCard = cards.find((item) => !newIds.has(item.id));
 
-    cardsToRenderCopy.splice(
-      cardsToRenderCopy.findIndex((card) => card.id === missingCard?.id),
+    cardsCopy.splice(
+      cardsCopy.findIndex((card) => card.id === missingCard?.id),
       1
     );
 
-    cardsToRenderCopy.forEach((cardToRender) => {
+    cardsCopy.forEach((cardToRender) => {
       const indexToReplace = orderedCards.current[index].findIndex(
         (card) => card.id === cardToRender.id
       );
@@ -71,10 +73,12 @@ const Container: React.FC<ContainerProps> = ({
       }
     });
 
-    setCards(cardsToRenderCopy);
+    setCards(cardsCopy);
   };
 
-  const handleDrop = () => {
+  const handleDrop = (e: DragEvent) => {
+    e.stopPropagation();
+
     if (draggedCard && index !== draggedCard.containerIndex) {
       const reorderedCards = _.cloneDeep(orderedCards.current);
 
@@ -94,42 +98,36 @@ const Container: React.FC<ContainerProps> = ({
       orderedCards.current[draggedCard.containerIndex] = sourceContainer;
 
       // Add dragged card to new container
-      const cardsToRenderCopy = _.cloneDeep(cards);
+      const cardsCopy = _.cloneDeep(cards);
 
       let top = cardTopPositions.current[0];
 
-      const indexToAdd = cardsToRenderCopy.findIndex((card) => {
+      const indexToAdd = cardsCopy.findIndex((card) => {
         const result = top !== card.top;
         top += TOP_PAYLOAD;
 
         return result;
       });
 
-      cardsToRenderCopy.splice(
-        indexToAdd === -1 ? cardsToRenderCopy.length : indexToAdd,
-        0,
-        {
-          id: draggedCard.id,
-          name: draggedCard.name,
-          top: indexToAdd === -1 ? top : top - TOP_PAYLOAD,
-        }
-      );
+      cardsCopy.splice(indexToAdd === -1 ? cardsCopy.length : indexToAdd, 0, {
+        id: draggedCard.id,
+        name: draggedCard.name,
+        top: indexToAdd === -1 ? top : top - TOP_PAYLOAD,
+      });
 
-      orderedCards.current[index] = cardsToRenderCopy;
-      setCards(cardsToRenderCopy);
+      orderedCards.current[index] = cardsCopy;
+      setCards(cardsCopy);
     }
   };
 
   const handleDropCancel = () => {
-    const cardsToRenderCopy = _.cloneDeep(cards);
+    const cardsCopy = _.cloneDeep(cards);
 
     let indexToAdd = -1;
 
     let top = cardTopPositions.current[0];
 
-    const tops = cardsToRenderCopy
-      .map((card) => card.top)
-      .sort((a, b) => a! - b!);
+    const tops = cardsCopy.map((card) => card.top).sort((a, b) => a! - b!);
 
     for (let i = 0; i < tops.length; i++) {
       if (tops[i] !== top) {
@@ -140,7 +138,7 @@ const Container: React.FC<ContainerProps> = ({
     }
 
     if (indexToAdd !== -1) {
-      cardsToRenderCopy.forEach((cardToRender) => {
+      cardsCopy.forEach((cardToRender) => {
         const indexToReplace = orderedCards.current[index].findIndex(
           (card) => card.id === cardToRender.id
         );
@@ -150,7 +148,7 @@ const Container: React.FC<ContainerProps> = ({
         }
       });
 
-      setCards(cardsToRenderCopy);
+      setCards(cardsCopy);
     }
   };
 
@@ -162,7 +160,7 @@ const Container: React.FC<ContainerProps> = ({
     dispatch(setDraggedContainer({ ...container, containerIndex: index }));
   };
 
-  const handleDragOver = (e: DragEvent) => {
+  const handleDragEnter = (e: DragEvent) => {
     e.preventDefault();
 
     // Check if the target container is not the same as the source
@@ -204,23 +202,15 @@ const Container: React.FC<ContainerProps> = ({
 
       orderedContainers.current = orderedContainersCopy;
       dispatch(setContainers(containersCopy));
-      reordered.current = true;
     }
   };
 
-  const handleDragEnter = (e: DragEvent) => {
+  const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
-    handleDragOver(e);
-  };
-
-  const handleDragLeave = (e: DragEvent) => {
-    e.stopPropagation();
-    reordered.current = false;
   };
 
   const handleDragEnd = () => {
     setDragging(false);
-    reordered.current = false;
 
     dispatch(setDraggedContainer(null));
   };
@@ -229,9 +219,8 @@ const Container: React.FC<ContainerProps> = ({
     const container = containerRef.current;
 
     if (container) {
-      container.removeEventListener("dragenter", handleDragEnter);
-      container.removeEventListener("dragleave", handleDragLeave);
       container.removeEventListener("dragover", handleDragOver);
+      container.removeEventListener("drop", handleDrop);
     }
   };
 
@@ -239,10 +228,13 @@ const Container: React.FC<ContainerProps> = ({
     const container = containerRef.current;
 
     if (container) {
+      clearEvents();
+
+      container.addEventListener("dragover", handleDragOver);
       container.addEventListener("drop", handleDrop);
 
       return () => {
-        container.removeEventListener("drop", handleDrop);
+        clearEvents();
       };
     }
   }, [draggedCard, cards]);
@@ -251,16 +243,12 @@ const Container: React.FC<ContainerProps> = ({
     const container = containerRef.current;
 
     if (container) {
-      clearEvents();
+      container.removeEventListener("dragenter", handleDragEnter);
 
       container.addEventListener("dragenter", handleDragEnter);
-      container.addEventListener("dragleave", handleDragLeave);
-
-      if (!reordered.current)
-        container.addEventListener("dragover", handleDragOver);
 
       return () => {
-        clearEvents();
+        container.removeEventListener("dragenter", handleDragEnter);
       };
     }
   }, [draggedContainer, containers]);
@@ -274,6 +262,10 @@ const Container: React.FC<ContainerProps> = ({
       handleDropCancel();
     }
   }, [draggedCard]);
+
+  useEffect(() => {
+    initializeTopPositions();
+  }, []);
 
   return (
     <div
@@ -294,7 +286,6 @@ const Container: React.FC<ContainerProps> = ({
           orderedCards={orderedCards}
           containerIndex={index}
           cards={cards}
-          containerRef={containerRef}
           draggedCard={draggedCard}
           topPositions={cardTopPositions}
           setCards={setCards}

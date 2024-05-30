@@ -64,6 +64,8 @@ export const INITIAL_CARDS = [
   ]
 ];
 
+export const TOP_PAYLOAD_START = 58;
+
 export const TOP_PAYLOAD = 120;
 
 export const LEFT_PAYLOAD = 320;

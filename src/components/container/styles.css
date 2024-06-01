@@ -5,11 +5,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  position: relative;
   box-sizing: border-box;
   margin: 0px 10px 0px 10px;
+  padding-bottom: 20px;
   background-color: #ebebebc7;
   box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
   border-radius: 5px;
@@ -19,4 +20,14 @@
 .container-title {
   width: 260px;
   padding: 20px;
+}
+
+.wrapper {
+  width: inherit;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow-y: auto;
 }

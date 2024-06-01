@@ -10,21 +10,19 @@ import "./styles.css";
 
 interface CardProps {
   card: CardInterface;
-  orderedCards: React.MutableRefObject<CardInterface[][]>;
   cards: CardInterface[];
+  orderedCards: React.MutableRefObject<CardInterface[][]>;
   containerIndex: number;
   draggedCard: DraggedCardInterface | null;
-  topPositions: React.MutableRefObject<number[]>;
   setCards: React.Dispatch<React.SetStateAction<CardInterface[]>>;
 }
 
 const Card: React.FC<CardProps> = ({
   card,
-  orderedCards,
   cards,
+  orderedCards,
   containerIndex,
   draggedCard,
-  topPositions,
   setCards,
 }) => {
   const { id, name } = card;
@@ -44,7 +42,9 @@ const Card: React.FC<CardProps> = ({
     dispatch(setDraggedCard({ ...card, containerIndex: containerIndex }));
   };
 
-  const handleDragEnter = () => {
+  const handleDragEnter = (e: DragEvent) => {
+    e.preventDefault();
+
     if (draggedCard && id !== draggedCard.id) {
       // Check whether card is dragged within the container
       if (containerIndex === draggedCard.containerIndex) {
@@ -75,7 +75,10 @@ const Card: React.FC<CardProps> = ({
             );
 
             if (cardIndex !== -1) {
-              cardsCopy[cardIndex].top = topPositions.current[index];
+              const newTop = index * TOP_PAYLOAD;
+
+              cardsCopy[cardIndex].top = newTop;
+              card.top = newTop;
             }
           });
 
@@ -84,29 +87,27 @@ const Card: React.FC<CardProps> = ({
         }
       } else {
         // Reorder cards
-        const reorderedCards = _.cloneDeep(cards);
+        const reorderedCards = _.cloneDeep(
+          orderedCards.current[containerIndex]
+        );
 
-        if (reorderedCards.length === topPositions.current.length) {
-          // Add more top position values
-          topPositions.current.push(
-            topPositions.current[topPositions.current.length - 1] + TOP_PAYLOAD
-          );
-        }
+        const startIndexRef = reorderedCards.findIndex(
+          (card) => card.id === id
+        );
+        const startIndexCard = cards.findIndex((card) => card.id === id);
 
-        const startIndex = reorderedCards.findIndex((card) => card.id === id);
-
-        if (reorderedCards[startIndex].top) {
+        if (reorderedCards[startIndexRef].top !== null) {
           if (
-            reorderedCards[startIndex].top! ===
-            orderedCards.current[containerIndex][startIndex].top!
-          ) {
-            for (let i = startIndex; i < reorderedCards.length; i++) {
-              reorderedCards[i].top = topPositions.current[i + 1];
+            cards[startIndexCard].top! ===
+            orderedCards.current[containerIndex][startIndexRef].top!
+          )
+            for (let i = startIndexRef; i < reorderedCards.length; i++) {
+              reorderedCards[i].top = TOP_PAYLOAD * (i + 1);
             }
-          } else {
-            reorderedCards[startIndex].top =
-              orderedCards.current[containerIndex][startIndex].top;
-          }
+          else
+            for (let i = startIndexRef + 1; i < reorderedCards.length; i++) {
+              reorderedCards[i].top! += TOP_PAYLOAD;
+            }
         }
 
         // Assign new top values to reordered cards
@@ -117,7 +118,7 @@ const Card: React.FC<CardProps> = ({
             (reorderedCard) => reorderedCard.id === card.id
           )?.top;
 
-          if (top) card.top = top;
+          if (typeof top !== "undefined") card.top = top;
         });
 
         setCards(cardsToRenderCopy);
@@ -131,9 +132,9 @@ const Card: React.FC<CardProps> = ({
 
   const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
     e.stopPropagation();
-    setDragging(false);
 
     setTimeout(() => {
+      setDragging(false);
       dispatch(setDraggedCard(null));
     }, 50);
   };
@@ -169,7 +170,7 @@ const Card: React.FC<CardProps> = ({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       style={{
-        position: card.top ? "absolute" : "static",
+        position: card.top !== null ? "absolute" : "static",
         top: `${card.top}px`,
       }}
     >

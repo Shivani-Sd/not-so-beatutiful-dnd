@@ -9,14 +9,13 @@ import {
   setDraggedContainer,
 } from "../../store/slices/appSlice";
 import { CardInterface, ContainerInterface } from "../../types";
-import { LEFT_PAYLOAD, TOP_PAYLOAD } from "../../constants";
+import { LEFT_PAYLOAD, TOP_PAYLOAD, TOP_START } from "../../constants";
 import Card from "../card";
 import "./styles.css";
 
 interface ContainerProps {
   index: number;
   container: ContainerInterface;
-  cardTopPositions: React.MutableRefObject<number[]>;
   orderedCards: React.MutableRefObject<CardInterface[][]>;
   orderedContainers: React.MutableRefObject<ContainerInterface[]>;
 }
@@ -24,7 +23,6 @@ interface ContainerProps {
 const Container: React.FC<ContainerProps> = ({
   index,
   container,
-  cardTopPositions,
   orderedCards,
   orderedContainers,
 }) => {
@@ -92,7 +90,7 @@ const Container: React.FC<ContainerProps> = ({
       sourceContainer.splice(indexToRemove, 1);
 
       sourceContainer.forEach(
-        (card, index) => (card.top = cardTopPositions.current[index])
+        (card, index) => (card.top = index * TOP_PAYLOAD)
       );
 
       orderedCards.current[draggedCard.containerIndex] = sourceContainer;
@@ -100,7 +98,7 @@ const Container: React.FC<ContainerProps> = ({
       // Add dragged card to new container
       const cardsCopy = _.cloneDeep(cards);
 
-      let top = cardTopPositions.current[0];
+      let top = TOP_START;
 
       const indexToAdd = cardsCopy.findIndex((card) => {
         const result = top !== card.top;
@@ -125,7 +123,7 @@ const Container: React.FC<ContainerProps> = ({
 
     let indexToAdd = -1;
 
-    let top = cardTopPositions.current[0];
+    let top = TOP_START;
 
     const tops = cardsCopy.map((card) => card.top).sort((a, b) => a! - b!);
 
@@ -279,18 +277,19 @@ const Container: React.FC<ContainerProps> = ({
       }}
     >
       <div className="container-title">{container.name}</div>
-      {cards.map((card) => (
-        <Card
-          key={card.id}
-          card={card}
-          orderedCards={orderedCards}
-          containerIndex={index}
-          cards={cards}
-          draggedCard={draggedCard}
-          topPositions={cardTopPositions}
-          setCards={setCards}
-        />
-      ))}
+      <div className="wrapper">
+        {cards.map((card) => (
+          <Card
+            key={card.id}
+            card={card}
+            orderedCards={orderedCards}
+            containerIndex={index}
+            cards={cards}
+            draggedCard={draggedCard}
+            setCards={setCards}
+          />
+        ))}
+      </div>
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "./store/store";
 
 import { CardInterface, ContainerInterface } from "./types";
-import { INITIAL_CARDS, TOP_PAYLOAD, TOP_PAYLOAD_START } from "./constants";
+import { INITIAL_CARDS, TOP_PAYLOAD } from "./constants";
 import Container from "./components/container";
 import "./App.css";
 
@@ -14,27 +14,10 @@ function App() {
 
   const orderedCards = useRef<CardInterface[][]>(INITIAL_CARDS);
 
-  const cardTopPositions = useRef<number[]>([]);
-
   const calculateTopPositions = () => {
-    const maxNumberOfCards = orderedCards.current.reduce(
-      (acc, container) => Math.max(acc, container.length),
-      0
-    );
-
-    Array(maxNumberOfCards + 1)
-      .fill(0)
-      .forEach((_, index) => {
-        if (index !== 0)
-          cardTopPositions.current.push(
-            TOP_PAYLOAD_START + TOP_PAYLOAD * index
-          );
-        else cardTopPositions.current.push(58);
-      });
-
     orderedCards.current.forEach((container) => {
       container.forEach(
-        (card, index) => (card.top = cardTopPositions.current[index])
+        (card, index) => (card.top = index * TOP_PAYLOAD)
       );
     });
   };
@@ -52,7 +35,6 @@ function App() {
             index={index}
             orderedCards={orderedCards}
             container={container}
-            cardTopPositions={cardTopPositions}
             orderedContainers={orderedContainers}
           />
         ))}
